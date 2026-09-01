@@ -14,6 +14,15 @@ interface Photo {
   sort_order: number
 }
 
+const CATEGORIES = [
+  { value: 'portrait', label: 'Portraits' },
+  { value: 'wedding', label: 'Weddings' },
+  { value: 'editorial', label: 'Editorial' },
+]
+
+const URL_HINT =
+  "Any publicly viewable HTTPS URL works — the site's /photos/ folder, an S3 bucket, Cloudflare, Imgur…"
+
 export function AdminPhotosPage() {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -40,8 +49,7 @@ export function AdminPhotosPage() {
       <div>
         <h1 className="font-display text-3xl text-ink">Portfolio photos</h1>
         <p className="mt-1 text-sm text-ink/60">
-          Drag to reorder — the order here is the order on the Portfolio page. Image files live in
-          the website's /photos/ folder or any public URL.
+          Drag to reorder — the order here is the order on the Portfolio page. {URL_HINT}
         </p>
       </div>
 
@@ -66,15 +74,42 @@ export function AdminPhotosPage() {
 }
 
 function PhotoEditor({ photo, onDeleted }: { photo: Photo; onDeleted: () => Promise<void> }) {
-  const [draft, setDraft] = useState({ alt: photo.alt, caption: photo.caption ?? '' })
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [draft, setDraft] = useState({
+    category: photo.category,
+    src: photo.src,
+    alt: photo.alt,
+    caption: photo.caption ?? '',
+  })
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  function dirty() {
+    return (
+      draft.category !== photo.category ||
+      draft.src !== photo.src ||
+      draft.alt !== photo.alt ||
+      draft.caption !== (photo.caption ?? '')
+    )
+  }
 
   async function save() {
-    if (draft.alt === photo.alt && draft.caption === (photo.caption ?? '')) return
+    if (!dirty()) return
     setStatus('saving')
-    await photosApi.update(photo.id, { alt: draft.alt, caption: draft.caption || undefined }).catch(() => undefined)
-    setStatus('saved')
-    setTimeout(() => setStatus('idle'), 2000)
+    setErrorMessage(null)
+    try {
+      await photosApi.update(photo.id, {
+        category: draft.category,
+        src: draft.src.trim(),
+        alt: draft.alt,
+        caption: draft.caption || undefined,
+      })
+      setStatus('saved')
+      setTimeout(() => setStatus('idle'), 2000)
+      onDeleted() // reload so the baseline matches the server
+    } catch (err) {
+      setStatus('error')
+      setErrorMessage(err instanceof Error ? err.message : 'Could not save')
+    }
   }
 
   function onBlur(e: React.FocusEvent) {
@@ -83,36 +118,65 @@ function PhotoEditor({ photo, onDeleted }: { photo: Photo; onDeleted: () => Prom
 
   return (
     <div className="border border-ink/12 bg-mat/40 p-3">
-      {status === 'saving' && <span className="exif text-safelight-deep">saving…</span>}
-      {status === 'saved' && <span className="exif text-safelight-deep">saved ✓</span>}
-      <div className="flex items-start gap-4">
-        <img src={photo.src} alt={photo.alt} className="h-20 w-28 border border-ink/10 object-cover" />
-        <div className="min-w-0 flex-1">
-          <input
-            value={draft.alt}
-            onChange={(e) => setDraft((d) => ({ ...d, alt: e.target.value }))}
-            onBlur={onBlur}
-            className="w-full bg-transparent text-sm text-ink outline-none"
-            aria-label="Alt text"
-          />
-          <input
-            value={draft.caption ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, caption: e.target.value }))}
-            onBlur={onBlur}
-            className="mt-1 w-full bg-transparent text-xs text-ink/60 outline-none"
-            placeholder="Caption (optional)"
-          />
-        </div>
+      <div className="mb-1 flex items-center gap-3">
+        <span className="exif text-ink/40">{photo.category}</span>
+        {status === 'saving' && <span className="exif text-safelight-deep">saving…</span>}
+        {status === 'saved' && <span className="exif text-safelight-deep">saved ✓</span>}
+        {status === 'error' && <span className="exif text-safelight-deep">error: {errorMessage}</span>}
         <button
           type="button"
           onClick={async () => {
             await photosApi.remove(photo.id).catch(() => undefined)
             onDeleted()
           }}
-          className="text-xs text-ink/45 hover:text-safelight-deep"
+          className="ml-auto text-xs text-ink/45 hover:text-safelight-deep"
         >
           Delete
         </button>
+      </div>
+      <div className="flex items-start gap-4" onBlur={onBlur}>
+        <img
+          src={draft.src}
+          alt={draft.alt}
+          className="h-20 w-28 shrink-0 border border-ink/10 object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <input
+            value={draft.src}
+            onChange={(e) => setDraft((d) => ({ ...d, src: e.target.value }))}
+            className="w-full bg-transparent text-sm text-ink outline-none"
+            placeholder="Image URL"
+            aria-label="Image URL"
+          />
+          <div className="mt-1 flex gap-3">
+            <select
+              value={draft.category}
+              onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+              className="w-36 bg-transparent text-xs text-ink/60 outline-none"
+              aria-label="Category"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <input
+              value={draft.alt}
+              onChange={(e) => setDraft((d) => ({ ...d, alt: e.target.value }))}
+              className="min-w-0 flex-1 bg-transparent text-xs text-ink/60 outline-none"
+              placeholder="Alt text"
+              aria-label="Alt text"
+            />
+          </div>
+          <input
+            value={draft.caption ?? ''}
+            onChange={(e) => setDraft((d) => ({ ...d, caption: e.target.value }))}
+            className="mt-1 w-full bg-transparent text-xs text-ink/60 outline-none"
+            placeholder="Caption (optional)"
+            aria-label="Caption"
+          />
+        </div>
       </div>
     </div>
   )
@@ -128,7 +192,7 @@ function PhotoCreateForm({ onCreated }: { onCreated: () => Promise<void> }) {
     event.preventDefault()
     setError(null)
     try {
-      await photosApi.create({ category, src, alt })
+      await photosApi.create({ category, src: src.trim(), alt })
       setSrc('')
       setAlt('')
       await onCreated()
@@ -140,14 +204,22 @@ function PhotoCreateForm({ onCreated }: { onCreated: () => Promise<void> }) {
   return (
     <Panel title="Add a photo">
       <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Image URL">
-          <input required value={src} onChange={(e) => setSrc(e.target.value)} className={inputClasses} placeholder="/photos/my-photo.jpg" />
+        <Field label="Image URL" hint={URL_HINT}>
+          <input
+            required
+            value={src}
+            onChange={(e) => setSrc(e.target.value)}
+            className={inputClasses}
+            placeholder="https://your-bucket.s3.amazonaws.com/photo.jpg"
+          />
         </Field>
         <Field label="Category">
           <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClasses}>
-            <option value="portrait">Portraits</option>
-            <option value="wedding">Weddings</option>
-            <option value="editorial">Editorial</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
           </select>
         </Field>
         <div className="sm:col-span-2">

@@ -4,11 +4,12 @@ import type { ReactNode } from 'react'
 export const inputClasses =
   'w-full border border-ink/20 bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink/35 focus:border-safelight focus:outline-none'
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
       <span className="eyebrow text-ink/50">{label}</span>
       {children}
+      {hint && <span className="text-xs text-ink/45">{hint}</span>}
     </label>
   )
 }

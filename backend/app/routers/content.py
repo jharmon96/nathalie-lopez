@@ -92,6 +92,17 @@ class PhotoBody(BaseModel):
     sort_order: int = 0
 
 
+class PhotoUpdate(BaseModel):
+    """PATCH body: every field optional, only provided fields are applied."""
+
+    category: str | None = None
+    src: str | None = None
+    alt: str | None = None
+    caption: str | None = None
+    exif: str | None = None
+    aspect: str | None = None
+
+
 @router.get("/admin/photos")
 async def list_photos(db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
     rows = (await db.execute(select(PhotoEntry).order_by(PhotoEntry.sort_order))).scalars().all()
@@ -114,14 +125,19 @@ async def create_photo(body: PhotoBody, db: AsyncSession = Depends(get_db), _: N
 
 
 @router.patch("/admin/photos/{photo_id}")
-async def update_photo(photo_id: int, body: PhotoBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+async def update_photo(photo_id: int, body: PhotoUpdate, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
     p = await db.get(PhotoEntry, photo_id)
     if p is None:
         raise HTTPException(status_code=404, detail="Photo not found")
-    for key, value in body.model_dump().items():
+    updates = body.model_dump(exclude_unset=True)
+    if "category" in updates and updates["category"] not in VALID_CATEGORIES:
+        raise HTTPException(status_code=422, detail=f"Category must be one of {VALID_CATEGORIES}")
+    if "src" in updates and not updates["src"].strip():
+        raise HTTPException(status_code=422, detail="Image URL cannot be empty")
+    for key, value in updates.items():
         setattr(p, key, value)
     await db.commit()
-    return {"id": p.id, **body.model_dump()}
+    return {"id": p.id, "category": p.category, "src": p.src, "alt": p.alt, "caption": p.caption, "exif": p.exif, "aspect": p.aspect}
 
 
 @router.delete("/admin/photos/{photo_id}")
