@@ -1,0 +1,14 @@
+# dependencies & build output
+node_modules
+dist
+
+# local state
+*.local
+.DS_Store
+
+# reference material from the client (not part of the site)
+Image*.jpeg
+
+# python
+__pycache__
+.venv

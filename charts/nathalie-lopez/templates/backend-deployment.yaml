@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nathalie-lopez.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "nathalie-lopez.backendSelector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nathalie-lopez.backendSelector" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.global.imagePullSecret }}
+      nodeSelector:
+        {{- toYaml .Values.backend.nodeSelector | nindent 8 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image }}:amd64-v{{ .Values.backend.version }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: NLP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-backend
+                  key: admin-password
+            - name: NLP_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-backend
+                  key: session-secret
+            - name: NLP_CORS_ORIGINS
+              value: {{ .Values.backend.corsOrigins | quote }}
+            - name: NLP_INSTAGRAM_APP_ID
+              value: {{ .Values.backend.instagramAppId | quote }}
+            - name: NLP_INSTAGRAM_APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  # Managed outside Helm (kubectl create secret) so the app
+                  # secret never appears in release history
+                  name: {{ .Values.backend.instagramSecretName | default "nathalie-lopez-instagram" }}
+                  key: instagram-app-secret
+                  optional: true
+            - name: NLP_INSTAGRAM_REDIRECT_URI
+              value: {{ .Values.backend.instagramRedirectUri | quote }}
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-data

@@ -1,0 +1,167 @@
+@import 'tailwindcss';
+
+/* --------------------------------------------------------------------------
+   Nathalie Lopez — drawn from the darkroom.
+   Fibre paper white, warm charcoal ink, mat-board oat, gelatin silver gray,
+   and one accent: the amber-red of the safelight under which every print is
+   made. The safelight is used once per screen, at most.
+   -------------------------------------------------------------------------- */
+
+@theme {
+  --color-paper: #faf8f3; /* the page — fibre paper, never cold white */
+  --color-mat: #efe9df; /* mat board — quiet bands and wells */
+  --color-ink: #201b17; /* warm charcoal — pure black is too hard here */
+  --color-darkroom: #2a241f; /* the painted walls of the darkroom itself */
+  --color-silver: #a39b90; /* gelatin silver — mid-tone gray, captions */
+  --color-safelight: #b4532f; /* the lamp over the developer tray */
+  --color-safelight-deep: #8f3f22; /* the same lamp, lamp turned down */
+
+  --font-display: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Karla Variable', 'Karla', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    @apply bg-paper font-body text-ink antialiased;
+  }
+
+  ::selection {
+    @apply bg-safelight/25 text-ink;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-safelight;
+  }
+}
+
+/* ---- Wordmark: her stamp, set in wide-tracked caps over the serif ------- */
+
+.wordmark {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 72;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Eyebrow: letterspaced caps, the way her prints are labelled -------- */
+
+.eyebrow {
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ---- EXIF caption under every frame ------------------------------------- */
+
+.exif {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---- The signature: every print develops -------------------------------- */
+/* A photograph does not pop into view — it comes up in the tray. Each frame
+   starts a touch dark, soft, and cold, then settles to full contrast. The
+   frame sets --d; the delay is read from it, so galleries develop in order. */
+
+.develop {
+  opacity: 0;
+  animation: print-develops 1.4s cubic-bezier(0.3, 0.55, 0.25, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes print-develops {
+  from {
+    opacity: 0;
+    filter: saturate(0.25) contrast(0.85) brightness(1.06) blur(6px);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    filter: saturate(1) contrast(1) brightness(1) blur(0);
+  }
+}
+
+/* ---- The aperture mark: the iris stops down ----------------------------- */
+/* Blades draw with pathLength=1 so the dash animation is uniform.           */
+
+.aperture-blade {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: blade-draw 0.7s ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+.aperture-ring {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: blade-draw 1.1s ease-out 0.15s forwards;
+}
+
+@keyframes blade-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---- Hide scrollbars on the full-bleed carousels ------------------------ */
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Safelight hairline rule -------------------------------------------- */
+
+.rule {
+  position: relative;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+.rule::after {
+  /* the safelight glow at the centre of every rule */
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 42px;
+  height: 5px;
+  transform: translateX(-50%);
+  background: var(--color-safelight);
+  opacity: 0.55;
+  filter: blur(3px);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .develop {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+  .aperture-blade,
+  .aperture-ring {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

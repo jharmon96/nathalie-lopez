@@ -1,0 +1,33 @@
+{
+  "spec": {
+    "containers": [
+      {
+        "name": "kaniko",
+        "image": "gcr.io/kaniko-project/executor:latest",
+        "stdin": true,
+        "stdinOnce": true,
+        "args": [
+          "--dockerfile=Dockerfile",
+          "--context=tar://stdin",
+          "--destination=extendederp/nathalie-lopez:amd64-v7",
+          "--custom-platform=linux/amd64"
+        ],
+        "volumeMounts": [{"name": "docker-config", "mountPath": "/kaniko/.docker/"}],
+        "resources": {
+          "requests": {"memory": "1Gi", "cpu": "500m"},
+          "limits": {"memory": "4Gi", "cpu": "2"}
+        }
+      }
+    ],
+    "nodeSelector": {"kubernetes.io/arch": "amd64"},
+    "volumes": [
+      {
+        "name": "docker-config",
+        "secret": {
+          "secretName": "regcred",
+          "items": [{"key": ".dockerconfigjson", "path": "config.json"}]
+        }
+      }
+    ]
+  }
+}
