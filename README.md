@@ -46,18 +46,26 @@ src/
   components/   HeroCarousel, ReviewsCarousel, InstagramStrip, Button,
                 SectionHeading, Header, Footer, Layout, ApertureMark,
                 PhotoFrame, ContactForm, SocialIcons
-  config/       site.ts (contact/urls), content.ts (photos, sessions)
+  components/admin/  SortableList (drag-reorder used by every admin tab)
+  hooks/        useScrollReveal (IntersectionObserver on [data-reveal]),
+                useSiteContent (public content fetch with module cache)
+  config/       site.ts (contact/urls), content.ts (fallback photos/sessions)
   lib/          usePageMeta, adminApi (typed API client)
   pages/        Home, Portfolio, Investment, FAQ, About, Contact,
                 NotFound, Privacy, CustomerGallery
-  pages/admin/  Login, Layout, CRM, Invoices, Galleries, Reviews,
-                Carousel, Instagram
+  pages/admin/  Login, Layout, CRM, Invoices, Galleries, Photos, Carousel,
+                Pricing, FAQ, Reviews, Instagram, SiteText
 backend/
-  app/          FastAPI app: config, db, models, security, routers
+  app/          FastAPI app: config, db, models, security, seed, crypto,
+                routers (health, admin_auth, customers, invoices, galleries,
+                public_gallery, reviews, slides, instagram, content)
+  tests/        pytest suite (in-memory SQLite via StaticPool)
+e2e/            Playwright end-to-end suite
 ```
 
 Photographs: `PhotoFrame` renders a darkroom placeholder (tone wash + film
-grain) until a real `src` is set on each photo in `src/config/content.ts`.
+grain) when `src` is empty. Real portfolio photos live in the database and are
+edited in the admin; `src/config/content.ts` is only the pre-database fallback.
 
 ## Admin & API
 
@@ -100,22 +108,35 @@ serve; pip → uvicorn API) and a Helm chart in `charts/nathalie-lopez/`.
 - Backend: SQLite on an `nfs-client` PVC mounted at `/data`
 - Health endpoints: `/health` (nginx) and `/api/v1/health` (API)
 
-Build & ship (bump tags in `deploy/kaniko-*.json` and `values.yaml`):
+Build & ship (bump `app.version`/`backend.version` in `values.yaml` and the
+matching `--destination` tags in `deploy/kaniko-*.json` **and**
+`deploy/kaniko-*-pod.yaml` together):
 
 ```sh
-# in-cluster builds
+# 1. Stage the repo as a gzipped tarball on the backend pod's PVC
+#    (the backend image has the same /data mount the build pod reads).
+BP=$(kubectl get pod -n nathalie-lopez -l app.kubernetes.io/component=backend -o jsonpath='{.items[0].metadata.name}')
 tar -czf - --exclude=./node_modules --exclude=./dist . | \
-  kubectl run kaniko --rm -i --restart=Never \
-  --image=gcr.io/kaniko-project/executor:latest -n nathalie-lopez \
-  --overrides="$(cat deploy/kaniko-fe.json)"
+  kubectl exec -i -n nathalie-lopez $BP -- sh -c 'cat > /data/context.tar.gz'
 
-tar -czf - --exclude=./node_modules --exclude=./dist . | \
-  kubectl run kaniko-be --rm -i --restart=Never \
-  --image=gcr.io/kaniko-project/executor:latest -n nathalie-lopez \
-  --overrides="$(cat deploy/kaniko-be.json)"
+# 2. Build from the staged tarball with a pinned pod spec
+kubectl delete pod kaniko -n nathalie-lopez --ignore-not-found
+kubectl apply -f deploy/kaniko-fe-pod.yaml     # or kaniko-be-pod.yaml
+kubectl wait --for=condition=Succeeded pod/kaniko -n nathalie-lopez --timeout=300s
+kubectl logs kaniko -n nathalie-lopez | grep Pushed
 
+# 3. Roll out (frontend and backend version bumps are independent)
 helm upgrade nathalie-lopez charts/nathalie-lopez -n nathalie-lopez
+kubectl rollout status deployment/nathalie-lopez-app -n nathalie-lopez
 ```
+
+> **Why the PVC staging?** Piping the tarball straight into
+> `kubectl run -i` (`--context=tar://stdin`) is racy: the pod name must
+> exactly equal the container name `kaniko` (Kaniko's overrides merge by
+> name), the tarball must be gzipped, and a slow attach corrupts stdin.
+> Reading from `/data/context.tar.gz` on the PVC removes all three failure
+> modes. `deploy/kaniko-fe-pod.yaml` / `kaniko-be-pod.yaml` are the pinned
+> pod specs — keep their `--destination` tags in sync with `values.yaml`.
 
 Secrets are **not** passed through Helm (values end up in release history).
 Create the backend secret once, directly:
@@ -132,15 +153,19 @@ The chart references but never renders these values.
 
 ## Instagram connection
 
-The home-page strip polls `/api/v1/public/instagram`. Two sources:
+The home-page strip polls `/api/v1/public/instagram`. Current status:
+**connected via OAuth** (Meta app "Instagram API with Instagram Login",
+app ID `1110954054831809`). Note the app runs in Development mode, so the
+site's account must stay on the app's tester list. Two sources feed the strip:
 
-1. **OAuth** — a Meta app ("Instagram API with Instagram Login") with the
-   redirect URI `https://nathalie.lopez.clan.global/api/v1/admin/instagram/callback`.
+1. **OAuth** — the redirect URI is
+   `https://nathalie.lopez.clan.global/api/v1/admin/instagram/callback`.
    App ID goes in `values.yaml` (`backend.instagramAppId`); the App Secret in
    the `nathalie-lopez-instagram` secret. Nathalie clicks **Connect
    Instagram** in `/admin`, approves on Instagram, and the long-lived token is
-   stored AES-GCM encrypted in the database.
+   stored AES-GCM encrypted in the database. Re-connect in the admin tab if
+   the feed ever empties (tokens expire).
 2. **Manual pinning** — paste post URLs in the admin Instagram tab.
 
 Contact details live in `src/config/site.ts`. The contact form composes a
-mailto: enquiry — wire it to an API endpoint when a backend exists.
+mailto: enquiry by design — no mail server to run or rate limit to hit.

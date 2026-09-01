@@ -1,13 +1,16 @@
 # dependencies & build output
 node_modules
 dist
+test-results
 
 # local state
 *.local
 .DS_Store
 
 # reference material from the client (not part of the site)
-Image*.jpeg
+Image.jpeg
+(1).jpeg
+(2).jpeg
 
 # python
 __pycache__

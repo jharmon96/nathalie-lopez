@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kaniko
+  namespace: nathalie-lopez
+spec:
+  restartPolicy: Never
+  containers:
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+        - "--dockerfile=backend/Dockerfile"
+        - "--context=tar:///data/context.tar.gz"
+        - "--destination=extendederp/nathalie-lopez-backend:amd64-v13"
+        - "--custom-platform=linux/amd64"
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker/
+        - name: data
+          mountPath: /data
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  volumes:
+    - name: docker-config
+      secret:
+        secretName: regcred
+        items:
+          - key: .dockerconfigjson
+            path: config.json
+    - name: data
+      persistentVolumeClaim:
+        claimName: nathalie-lopez-data
