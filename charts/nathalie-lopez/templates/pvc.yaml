@@ -5,6 +5,9 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "nathalie-lopez.labels" . | nindent 4 }}
+  annotations:
+    # Survives helm uninstall / chart resource removal — the database lives here
+    helm.sh/resource-policy: keep
 spec:
   storageClassName: {{ .Values.persistence.storageClass }}
   accessModes:

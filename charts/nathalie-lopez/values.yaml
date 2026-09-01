@@ -30,7 +30,7 @@ app:
 
 backend:
   image: extendederp/nathalie-lopez-backend
-  version: 7
+  version: 9
   replicas: 1
   service:
     port: 8000
