@@ -14,7 +14,7 @@ certificate:
 
 app:
   image: extendederp/nathalie-lopez
-  version: 11
+  version: 12
   replicas: 1
   service:
     port: 80
