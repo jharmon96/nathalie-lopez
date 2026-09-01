@@ -19,9 +19,11 @@ const groups = [
     items: [
       { to: '/admin/photos', label: 'Photos', end: false },
       { to: '/admin/carousel', label: 'Carousel', end: false },
+      { to: '/admin/sessions', label: 'Pricing', end: false },
       { to: '/admin/faq', label: 'FAQ', end: false },
       { to: '/admin/reviews', label: 'Reviews', end: false },
       { to: '/admin/instagram', label: 'Instagram', end: false },
+      { to: '/admin/site-text', label: 'Page text', end: false },
     ],
   },
 ]

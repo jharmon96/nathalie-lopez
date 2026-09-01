@@ -22,6 +22,7 @@ import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
 import { AdminPhotosPage } from '@/pages/admin/AdminPhotosPage'
 import { AdminReviewsPage } from '@/pages/admin/AdminReviewsPage'
 import { AdminSessionsPage } from '@/pages/admin/AdminSessionsPage'
+import { AdminSiteTextPage } from '@/pages/admin/AdminSiteTextPage'
 
 const router = createBrowserRouter([
   {
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
       { path: 'faq', element: <AdminFaqPage /> },
       { path: 'photos', element: <AdminPhotosPage /> },
       { path: 'sessions', element: <AdminSessionsPage /> },
+      { path: 'site-text', element: <AdminSiteTextPage /> },
     ],
   },
 ])

@@ -39,21 +39,22 @@ export function AdminSessionsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="font-display text-3xl text-ink">Sessions</h1>
+        <h1 className="font-display text-3xl text-ink">Pricing</h1>
         <p className="mt-1 text-sm text-ink/60">
-          Prices and details shown on the Investment page. Changes appear on the site immediately.
+          The tiers shown on the Investment page — drag to reorder. Changes appear on the site
+          immediately.
         </p>
       </div>
 
-      <Panel title="Add a session">
+      <Panel title="Add a tier">
         <SessionCreateForm onCreated={load} />
       </Panel>
 
       <section className="flex flex-col gap-3">
-        <h2 className="eyebrow text-ink/50">{sessions.length} sessions</h2>
+        <h2 className="eyebrow text-ink/50">{sessions.length} tiers</h2>
         {error && <p className="text-sm text-safelight-deep">{error}</p>}
         {sessions.length === 0 ? (
-          <EmptyNote>No sessions yet.</EmptyNote>
+          <EmptyNote>No tiers yet.</EmptyNote>
         ) : (
           <SortableList
             items={sessions}
@@ -115,7 +116,7 @@ function SessionCreateForm({ onCreated }: { onCreated: () => Promise<void> }) {
       </label>
       <div className="sm:col-span-2">
         <button type="submit" className="self-start bg-ink px-5 py-2 text-sm font-medium text-paper hover:bg-safelight-deep">
-          Add session
+          Add tier
         </button>
         {error && <p className="mt-2 text-sm text-safelight-deep">{error}</p>}
       </div>
@@ -138,6 +139,7 @@ function SessionEditor({ session, onSaved }: { session: Session; onSaved: () => 
       draft.name === session.name &&
       draft.price === session.price &&
       draft.blurb === (session.blurb ?? '') &&
+      draft.includes === (session.includes ?? '') &&
       draft.featured === session.featured
     ) {
       return
@@ -176,7 +178,8 @@ function SessionEditor({ session, onSaved }: { session: Session; onSaved: () => 
           className="w-full bg-transparent font-display text-lg text-ink outline-none"
           aria-label="Session name"
         />
-        {status !== 'idle' && <span className="exif text-safelight-deep">{status}</span>}
+        {status === 'saving' && <span className="exif text-safelight-deep">saving…</span>}
+        {status === 'saved' && <span className="exif text-safelight-deep">saved ✓</span>}
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1">
@@ -185,6 +188,7 @@ function SessionEditor({ session, onSaved }: { session: Session; onSaved: () => 
             value={draft.price}
             onChange={(e) => setDraft((d) => ({ ...d, price: e.target.value }))}
             onBlur={onBlur}
+            aria-label="Tier price"
             className="w-full bg-transparent px-1 py-0.5 text-sm text-ink outline-none"
           />
         </label>
@@ -201,6 +205,18 @@ function SessionEditor({ session, onSaved }: { session: Session; onSaved: () => 
       <label className="mt-3 flex items-center gap-2 text-sm text-ink/70">
         <input type="checkbox" checked={draft.featured} onChange={(e) => setDraft((d) => ({ ...d, featured: e.target.checked }))} onBlur={onBlur} />
         Most-booked (highlighted)
+      </label>
+      <label className="mt-3 flex flex-col gap-1">
+        <span className="eyebrow text-ink/45">What's included — one line per bullet</span>
+        <textarea
+          rows={4}
+          value={draft.includes}
+          onChange={(e) => setDraft((d) => ({ ...d, includes: e.target.value }))}
+          onBlur={onBlur}
+          placeholder={'2-hour shoot\n40 edited images\nOnline gallery'}
+          aria-label="Tier includes"
+          className="w-full bg-transparent px-1 py-0.5 text-sm text-ink outline-none"
+        />
       </label>
     </div>
   )

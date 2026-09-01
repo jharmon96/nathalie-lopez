@@ -10,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+async function request<T>(path: string, method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: 'include',
@@ -284,6 +284,11 @@ export const reviewsApi = {
   update: (id: number, body: Omit<AdminReview, 'id'>) => request<AdminReview>(`/admin/reviews/${id}`, 'PATCH', body),
   remove: (id: number) => request<{ ok: boolean }>(`/admin/reviews/${id}`, 'DELETE'),
   reorder: (ids: number[]) => request<{ ok: boolean }>('/admin/reviews/reorder', 'POST', { ids }),
+}
+
+export const siteTextApi = {
+  get: () => request<{ values: Record<string, string> }>('/admin/site', 'GET'),
+  put: (values: Record<string, string>) => request<{ ok: boolean }>('/admin/site', 'PUT', { values }),
 }
 
 export const slidesApi = {

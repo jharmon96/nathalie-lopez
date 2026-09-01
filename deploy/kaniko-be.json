@@ -9,7 +9,7 @@
         "args": [
           "--dockerfile=backend/Dockerfile",
           "--context=tar://stdin",
-          "--destination=extendederp/nathalie-lopez-backend:amd64-v12",
+          "--destination=extendederp/nathalie-lopez-backend:amd64-v13",
           "--custom-platform=linux/amd64"
         ],
         "volumeMounts": [{"name": "docker-config", "mountPath": "/kaniko/.docker/"}],

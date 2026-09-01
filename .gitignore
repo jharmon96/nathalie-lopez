@@ -12,3 +12,4 @@ Image*.jpeg
 # python
 __pycache__
 .venv
+e2e/artifacts/

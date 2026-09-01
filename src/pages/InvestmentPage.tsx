@@ -5,6 +5,9 @@ import { Button } from '@/components/Button'
 import { SectionHeading } from '@/components/SectionHeading'
 import { usePageMeta } from '@/lib/usePageMeta'
 
+const LEDE =
+  "Straightforward pricing, no packages padded with things you don't need. Every booking begins with a conversation."
+
 const notes = [
   {
     title: 'Prints',
@@ -20,17 +23,25 @@ const notes = [
   },
 ]
 
+/** Editable overrides live in Admin → Page text; empty means use the built-in. */
+function copy(siteText: Record<string, string>, key: string, fallback: string): string {
+  return siteText[key]?.trim() || fallback
+}
+
 export function InvestmentPage() {
   usePageMeta(`Investment | ${site.name}`, 'Portrait sittings, wedding coverage, and editorial commissions — sessions and rates.')
-  const { sessions } = useSiteContent()
+  const { sessions, site: siteText } = useSiteContent()
+  const t = (key: string, fallback: string) => copy(siteText, key, fallback)
+
+  const editableNotes = [
+    { title: t('invest_note_prints_title', notes[0].title), text: t('invest_note_prints_text', notes[0].text) },
+    { title: t('invest_note_film_title', notes[1].title), text: t('invest_note_film_text', notes[1].text) },
+    { title: t('invest_note_travel_title', notes[2].title), text: t('invest_note_travel_text', notes[2].text) },
+  ]
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
-      <SectionHeading
-        eyebrow="Investment"
-        title="Sessions and rates"
-        lede="Straightforward pricing, no packages padded with things you don't need. Every booking begins with a conversation."
-      />
+      <SectionHeading eyebrow="Investment" title="Sessions and rates" lede={t('invest_lede', LEDE)} />
 
       <div className="mt-12 grid gap-6 md:grid-cols-3">
         {sessions.map((session) => (
@@ -64,7 +75,7 @@ export function InvestmentPage() {
       </div>
 
       <div className="mt-16 grid gap-8 sm:grid-cols-3">
-        {notes.map((note) => (
+        {editableNotes.map((note) => (
           <div key={note.title} className="flex flex-col gap-2 border-t-2 border-ink/15 pt-4">
             <h3 className="font-display text-xl text-ink">{note.title}</h3>
             <p className="text-sm leading-relaxed text-ink/70">{note.text}</p>
@@ -73,10 +84,9 @@ export function InvestmentPage() {
       </div>
 
       <div className="mt-16 flex flex-col items-start gap-4 border border-ink/12 bg-darkroom px-8 py-10 sm:items-center sm:text-center">
-        <h2 className="font-display text-3xl text-paper">Not sure which fits?</h2>
+        <h2 className="font-display text-3xl text-paper">{t('invest_cta_title', 'Not sure which fits?')}</h2>
         <p className="max-w-xl leading-relaxed text-paper/70">
-          Write to me anyway. If a half-hour portrait sitting is the honest answer, that's what
-          I'll say.
+          {t('invest_cta_text', "Write to me anyway. If a half-hour portrait sitting is the honest answer, that's what I'll say.")}
         </p>
         <Button to="/contact">Start the conversation</Button>
       </div>
