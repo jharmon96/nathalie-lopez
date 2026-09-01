@@ -1,6 +1,7 @@
-# Nathalie Lopez — Photography
+# Nathalie Lopez Photography
 
-Portfolio site for Nathalie Lopez: portraiture, weddings, and editorial work.
+Portfolio site and studio admin for Nathalie Lopez — portraiture, weddings,
+and editorial work from West Yorkshire.
 
 Built with the same architecture and design conventions as the sibling sites
 (`groundup-structures`, `blessed-hands`, `matchtrack`):
@@ -11,18 +12,30 @@ Built with the same architecture and design conventions as the sibling sites
 - `react-router-dom` 7 with a single `Layout` (header/footer shell, scroll
   restoration)
 - Self-hosted fonts via Fontsource (Fraunces, Karla, IBM Plex Mono)
-- Central site config in `src/config/site.ts`; content in `src/config/content.ts`
+- FastAPI + async SQLAlchemy + SQLite backend for the admin area
+
+## Pages
+
+- **Home** — full-width hero carousel (neighbour slides peek at the screen
+  edges), tagline band, selected work, investment teaser, reviews carousel,
+  and an Instagram strip that polls for new posts
+- **Portfolio** — category-filtered masonry gallery
+- **Investment** — session cards and rates
+- **FAQ** — accordion
+- **About** — bio + process timeline
+- **Contact** — enquiry form (composes a mailto)
 
 ## Design language
 
-Darkroom-inspired: fibre-paper white, warm charcoal ink, mat-board oat, gelatin
-silver gray, and a single amber-red "safelight" accent used sparingly.
+Darkroom-inspired: fibre paper white, warm charcoal ink, mat board oat,
+gelatin silver gray, and a single amber-red "safelight" accent used sparingly.
 
 Signature details:
 
 - Every photograph "develops" on first paint (`print-develops` keyframes),
   staggered frame by frame
-- Aperture-iris logo mark whose blades stop down on load
+- Aperture-iris logo mark whose blades stop down on load (also the favicon —
+  regenerate PNGs with `python3 scripts/gen-icons.py`)
 - EXIF-style mono captions under each frame
 - Full `prefers-reduced-motion` fallbacks
 
@@ -30,65 +43,91 @@ Signature details:
 
 ```
 src/
-  components/   Button, SectionHeading, Header, Footer, Layout,
-                ApertureMark, PhotoFrame, ContactForm
-  config/       site.ts (contact/url), content.ts (photos, sessions)
-  lib/          usePageMeta (title/description per route)
-  pages/        Home, Portfolio, Services, About, Contact, NotFound
+  components/   HeroCarousel, ReviewsCarousel, InstagramStrip, Button,
+                SectionHeading, Header, Footer, Layout, ApertureMark,
+                PhotoFrame, ContactForm, SocialIcons
+  config/       site.ts (contact/urls), content.ts (photos, sessions)
+  lib/          usePageMeta, adminApi (typed API client)
+  pages/        Home, Portfolio, Investment, FAQ, About, Contact,
+                NotFound, Privacy, CustomerGallery
+  pages/admin/  Login, Layout, CRM, Invoices, Galleries, Reviews,
+                Carousel, Instagram
+backend/
+  app/          FastAPI app: config, db, models, security, routers
 ```
 
 Photographs: `PhotoFrame` renders a darkroom placeholder (tone wash + film
 grain) until a real `src` is set on each photo in `src/config/content.ts`.
 
-## Run
-
-```sh
-npm install
-npm run dev        # http://localhost:9095
-npm run build      # tsc -b && vite build → dist/
-npm run preview
-```
-
 ## Admin & API
 
-`/admin` — password-gated studio area (CRM, invoices, customer galleries),
-backed by a FastAPI + SQLite service (`backend/`) that persists to a PVC.
+`/admin` — password-gated studio area, backed by the FastAPI service.
 
-- Sign-in: `POST /api/v1/admin/login` (cookie session, CSRF header on writes,
-  login throttling)
-- CRM: `/api/v1/admin/customers`
-- Invoices: `/api/v1/admin/invoices` (draft → sent → paid/void, amounts in
-  pence)
-- Galleries: `/api/v1/admin/galleries` + public viewer at
-  `/gallery/{slug}` — optional per-gallery passphrase
-- Set at install: `--set backend.adminPassword=… backend.sessionSecret=…`
+| Area | What it does |
+| --- | --- |
+| CRM | Customers with email/phone/source/notes |
+| Invoices | Draft → sent → paid/void, amounts in pence |
+| Galleries | Per-customer proofing galleries with share links + optional passphrase (public viewer at `/gallery/{slug}`) |
+| Reviews | Home-page testimonial carousel |
+| Carousel | Hero slides for the home page |
+| Instagram | Manual post pinning + OAuth connection |
+
+API: cookie sessions (hashed tokens, CSRF header on writes, login
+throttling), all under `/api/v1`. Health at `/api/v1/health`.
 
 ## Deployment
 
-Ships like the sibling sites: a multi-stage Dockerfile (node build → nginx SPA
-serve) and a Helm chart in `charts/nathalie-lopez/`.
+Ships like the sibling sites: multi-stage Dockerfiles (node build → nginx SPA
+serve; pip → uvicorn API) and a Helm chart in `charts/nathalie-lopez/`.
 
 - Domain: `nathalie.lopez.clan.global` (Traefik `IngressRoute`, HTTP→HTTPS)
 - TLS: cert-manager `Certificate` via `letsencrypt-prod` → secret
   `nathalie-lopez-tls`
 - DNS: external-dns annotation points at the fronting VPS
-- Backend: FastAPI + SQLite on an `nfs-client` PVC mounted at `/data`
-  (RBD/Ceph was timing out in this cluster — use `nfs-client`)
+- Backend: SQLite on an `nfs-client` PVC mounted at `/data`
 - Health endpoints: `/health` (nginx) and `/api/v1/health` (API)
 
-Build & ship:
+Build & ship (bump tags in `deploy/kaniko-*.json` and `values.yaml`):
 
 ```sh
-docker build -t extendederp/nathalie-lopez:amd64-v4 .            # frontend
-docker build -f backend/Dockerfile -t extendederp/nathalie-lopez-backend:amd64-v2 .
-docker push extendederp/nathalie-lopez:amd64-v4
-docker push extendederp/nathalie-lopez-backend:amd64-v2
-# kaniko alternative: deploy/kaniko-fe.json + deploy/kaniko-be.json
-helm upgrade --install nathalie-lopez charts/nathalie-lopez -n nathalie-lopez \
-  --set backend.adminPassword=… --set backend.sessionSecret=…
+# in-cluster builds
+tar -czf - --exclude=./node_modules --exclude=./dist . | \
+  kubectl run kaniko --rm -i --restart=Never \
+  --image=gcr.io/kaniko-project/executor:latest -n nathalie-lopez \
+  --overrides="$(cat deploy/kaniko-fe.json)"
+
+tar -czf - --exclude=./node_modules --exclude=./dist . | \
+  kubectl run kaniko-be --rm -i --restart=Never \
+  --image=gcr.io/kaniko-project/executor:latest -n nathalie-lopez \
+  --overrides="$(cat deploy/kaniko-be.json)"
+
+helm upgrade nathalie-lopez charts/nathalie-lopez -n nathalie-lopez
 ```
 
-Contact details live in `src/config/site.ts` (email
-`photographybynathalie@gmail.com`, based in West Yorkshire, Instagram
-`@nathalielopezphotography`). The contact form composes a mailto: enquiry —
-wire it to an API endpoint when a backend exists.
+Secrets are **not** passed through Helm (values end up in release history).
+Create the backend secret once, directly:
+
+```sh
+kubectl create secret generic nathalie-lopez-backend -n nathalie-lopez \
+  --from-literal=admin-password='…' \
+  --from-literal=session-secret='…'
+# when connecting Instagram, also:
+#   --from-literal=instagram-app-secret='…'
+```
+
+The chart references but never renders these values.
+
+## Instagram connection
+
+The home-page strip polls `/api/v1/public/instagram`. Two sources:
+
+1. **OAuth** — a Meta app ("Instagram API with Instagram Login") with the
+   redirect URI `https://nathalie.lopez.clan.global/api/v1/admin/instagram/callback`.
+   App ID goes in `values.yaml` (`backend.instagramAppId`); the App Secret in
+   the `nathalie-lopez-instagram` secret. Nathalie clicks **Connect
+   Instagram** in `/admin`, approves on Instagram, and the long-lived token is
+   stored AES-GCM encrypted in the database.
+2. **Manual pinning** — paste post URLs in the admin Instagram tab.
+
+Contact details live in `src/config/site.ts`. The contact form composes a
+mailto: enquiry — wire it to an API endpoint when a backend exists.

@@ -30,7 +30,7 @@ app:
 
 backend:
   image: extendederp/nathalie-lopez-backend
-  version: 5
+  version: 7
   replicas: 1
   service:
     port: 8000
@@ -40,7 +40,7 @@ backend:
   corsOrigins: '["https://nathalie.lopez.clan.global"]'
   # Meta app for the Instagram connection. The App ID is not sensitive; the
   # App Secret lives in a separate k8s secret created outside Helm.
-  instagramAppId: ""
+  instagramAppId: "1110954054831809"
   instagramSecretName: nathalie-lopez-instagram
   instagramRedirectUri: "https://nathalie.lopez.clan.global/api/v1/admin/instagram/callback"
   resources:

@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -7,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import get_db
-from app.models import AdminUser
-from app.security import COOKIE_NAME, _hash_token, create_session, destroy_session, throttle, verify_password
+from app.models import AdminSession, AdminUser
+from app.security import COOKIE_NAME, _hash_token, _naive_utc, create_session, destroy_session, throttle, verify_password
 
 router = APIRouter(prefix="/admin")
 
@@ -58,6 +56,6 @@ async def me(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     admin_session = (
         await db.execute(select(AdminSession).where(AdminSession.token_hash == _hash_token(token)))
     ).scalar_one_or_none()
-    if admin_session is None or admin_session.expires_at < datetime.now(timezone.utc):
+    if admin_session is None or admin_session.expires_at < _naive_utc():
         raise HTTPException(status_code=401, detail="Session expired")
     return {"ok": True}

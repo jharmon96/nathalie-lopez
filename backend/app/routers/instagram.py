@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 import httpx
@@ -14,6 +15,8 @@ from app.models import Credential, InstagramPost
 from app.security import require_admin, sign_state, verify_state
 
 router = APIRouter()
+
+logger = logging.getLogger("instagram")
 
 GRAPH_MEDIA_URL = "https://graph.instagram.com/me/media"
 GRAPH_FIELDS = "id,caption,media_url,permalink,media_type,timestamp"
@@ -184,10 +187,12 @@ async def callback(
     settings = get_settings()
     frontend = "/admin/instagram"
     if error or not code or not state:
+        logger.warning("Instagram callback arrived with error=%s", error or "missing code/state")
         return RedirectResponse(f"{frontend}?error=cancelled")
     if not settings.instagram_app_id or not settings.instagram_app_secret:
         return RedirectResponse(f"{frontend}?error=not_configured")
     if not verify_state(settings.session_secret, state):
+        logger.warning("Instagram callback state validation failed")
         return RedirectResponse(f"{frontend}?error=bad_state")
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -202,9 +207,11 @@ async def callback(
             },
         )
     if exchange.status_code != 200:
+        logger.error("Instagram token exchange failed: %s %s", exchange.status_code, exchange.text[:300])
         return RedirectResponse(f"{frontend}?error=exchange_failed")
     short_token = exchange.json().get("access_token")
     if not short_token:
+        logger.error("Instagram token exchange returned no access_token")
         return RedirectResponse(f"{frontend}?error=exchange_failed")
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -213,6 +220,7 @@ async def callback(
             params={"grant_type": "ig_exchange_token", "client_secret": settings.instagram_app_secret, "access_token": short_token},
         )
     if refreshed.status_code != 200:
+        logger.error("Instagram long-token refresh failed: %s %s", refreshed.status_code, refreshed.text[:300])
         return RedirectResponse(f"{frontend}?error=exchange_failed")
     long_token = refreshed.json().get("access_token")
     now = datetime.now(timezone.utc)
@@ -230,7 +238,9 @@ async def callback(
     await db.commit()
 
     try:
-        await _sync_from_graph(db)
-    except HTTPException:
-        pass  # feed sync is best-effort; the connection itself succeeded
+        count = await _sync_from_graph(db)
+        logger.info("Instagram feed synced on connect: %s posts", count)
+    except Exception as sync_error:  # best-effort; the connection itself succeeded
+        logger.warning("Instagram feed sync after connect failed: %s", sync_error)
+    logger.info("Instagram connected successfully; long-lived token stored encrypted")
     return RedirectResponse(f"{frontend}?connected=1")
