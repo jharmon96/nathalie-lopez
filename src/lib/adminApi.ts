@@ -289,6 +289,8 @@ export const reviewsApi = {
 export const slidesApi = {
   list: () => request<{ slides: AdminSlide[] }>('/admin/slides', 'GET'),
   create: (body: Omit<AdminSlide, 'id'>) => request<AdminSlide>('/admin/slides', 'POST', body),
+  update: (id: number, body: Partial<Omit<AdminSlide, 'id' | 'sort_order'>>) =>
+    request<AdminSlide>(`/admin/slides/${id}`, 'PATCH', body),
   remove: (id: number) => request<{ ok: boolean }>(`/admin/slides/${id}`, 'DELETE'),
   reorder: (ids: number[]) => request<{ ok: boolean }>('/admin/slides/reorder', 'POST', { ids }),
 }

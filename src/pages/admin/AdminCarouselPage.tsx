@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 
 import { slidesApi, type AdminSlide } from '@/lib/adminApi'
 
+import { SortableList } from '@/components/admin/Sortable'
 import { EmptyNote, Field, inputClasses, Panel } from './ui'
 
 export function AdminCarouselPage() {
@@ -12,18 +13,22 @@ export function AdminCarouselPage() {
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
-    setSlides((await slidesApi.list()).slides)
+    try {
+      setSlides((await slidesApi.list()).slides)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load slides')
+    }
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err.message))
+    load()
   }, [])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
     try {
-      await slidesApi.create({ image_url: imageUrl, alt, caption: caption || null, sort_order: slides.length })
+      await slidesApi.create({ image_url: imageUrl.trim(), alt, caption: caption || null, sort_order: slides.length })
       setImageUrl('')
       setAlt('')
       setCaption('')
@@ -33,19 +38,25 @@ export function AdminCarouselPage() {
     }
   }
 
+  async function handleReorder(ids: number[]) {
+    await slidesApi.reorder(ids).catch(() => undefined)
+    await load()
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="font-display text-3xl text-ink">Hero carousel</h1>
         <p className="mt-1 text-sm text-ink/60">
-          Horizontal slides at the top of the home page. Landscape images work best.
+          Full-width slides across the top of the home page — landscape images work best. Until you add
+          the first slide, the home page shows your latest portfolio photos instead.
         </p>
       </div>
 
       <Panel title="Add a slide">
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="Image URL">
+            <Field label="Image URL" hint="Any publicly viewable HTTPS URL — the site's /photos/ folder, an S3 bucket, Cloudflare, Imgur…">
               <input
                 required
                 value={imageUrl}
@@ -75,27 +86,107 @@ export function AdminCarouselPage() {
         {slides.length === 0 ? (
           <EmptyNote>No slides yet — the home page falls back to recent work.</EmptyNote>
         ) : (
-          <div className="flex flex-col gap-4">
-            {slides.map((s, i) => (
-              <div key={s.id} className="flex items-center gap-4 border border-ink/12 bg-mat/40 p-3">
-                <span className="exif text-silver">{i + 1}</span>
-                <img src={s.image_url} alt={s.alt} className="h-14 w-24 border border-ink/10 object-cover" />
-                <p className="flex-1 truncate text-sm text-ink/70">{s.caption ?? s.alt}</p>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await slidesApi.remove(s.id).catch(() => undefined)
-                    await load()
-                  }}
-                  className="text-xs text-ink/45 hover:text-safelight-deep"
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
-          </div>
+          <SortableList
+            items={slides}
+            keyOf={(s) => s.id}
+            onReorder={handleReorder}
+            renderItem={(s) => <SlideEditor slide={s} onDeleted={load} />}
+          />
         )}
       </section>
+    </div>
+  )
+}
+
+function SlideEditor({ slide, onDeleted }: { slide: AdminSlide; onDeleted: () => Promise<void> }) {
+  const [draft, setDraft] = useState({
+    image_url: slide.image_url,
+    alt: slide.alt,
+    caption: slide.caption ?? '',
+  })
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  function dirty() {
+    return (
+      draft.image_url !== slide.image_url ||
+      draft.alt !== slide.alt ||
+      draft.caption !== (slide.caption ?? '')
+    )
+  }
+
+  async function save() {
+    if (!dirty()) return
+    setStatus('saving')
+    setErrorMessage(null)
+    try {
+      await slidesApi.update(slide.id, {
+        image_url: draft.image_url.trim(),
+        alt: draft.alt,
+        caption: draft.caption || null,
+      })
+      setStatus('saved')
+      setTimeout(() => setStatus('idle'), 2000)
+      onDeleted() // reload so the baseline matches the server
+    } catch (err) {
+      setStatus('error')
+      setErrorMessage(err instanceof Error ? err.message : 'Could not save')
+    }
+  }
+
+  function onBlur(e: React.FocusEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) save()
+  }
+
+  return (
+    <div className="border border-ink/12 bg-mat/40 p-3">
+      <div className="mb-1 flex items-center gap-3">
+        {status === 'saving' && <span className="exif text-safelight-deep">saving…</span>}
+        {status === 'saved' && <span className="exif text-safelight-deep">saved ✓</span>}
+        {status === 'error' && <span className="exif text-safelight-deep">error: {errorMessage}</span>}
+        <button
+          type="button"
+          onClick={async () => {
+            await slidesApi.remove(slide.id).catch(() => undefined)
+            onDeleted()
+          }}
+          className="ml-auto text-xs text-ink/45 hover:text-safelight-deep"
+        >
+          Delete
+        </button>
+      </div>
+      <div className="flex items-start gap-4" onBlur={onBlur}>
+        <img
+          src={draft.image_url}
+          alt={draft.alt}
+          className="h-14 w-24 shrink-0 border border-ink/10 object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <input
+            value={draft.image_url}
+            onChange={(e) => setDraft((d) => ({ ...d, image_url: e.target.value }))}
+            className="w-full bg-transparent text-sm text-ink outline-none"
+            placeholder="Image URL"
+            aria-label="Image URL"
+          />
+          <div className="mt-1 flex gap-3">
+            <input
+              value={draft.alt}
+              onChange={(e) => setDraft((d) => ({ ...d, alt: e.target.value }))}
+              className="min-w-0 flex-1 bg-transparent text-xs text-ink/60 outline-none"
+              placeholder="Alt text"
+              aria-label="Alt text"
+            />
+            <input
+              value={draft.caption ?? ''}
+              onChange={(e) => setDraft((d) => ({ ...d, caption: e.target.value }))}
+              className="min-w-0 flex-1 bg-transparent text-xs text-ink/60 outline-none"
+              placeholder="Caption (optional)"
+              aria-label="Caption"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

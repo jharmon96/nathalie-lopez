@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 
 
 import { site } from '@/config/site'
-import { publicApi, type ReviewData } from '@/lib/adminApi'
+import { publicApi, type ReviewData, type SlideData } from '@/lib/adminApi'
 import { useSiteContent } from '@/hooks/useSiteContent'
 
 import { Button } from '@/components/Button'
-import { HeroCarousel } from '@/components/HeroCarousel'
+import { HeroCarousel, type HeroSlide } from '@/components/HeroCarousel'
 import { InstagramStrip } from '@/components/InstagramStrip'
 import { PhotoFrame } from '@/components/PhotoFrame'
 import { ReviewsCarousel } from '@/components/ReviewsCarousel'
@@ -29,18 +29,30 @@ export function HomePage() {
   )
   const content = useSiteContent()
   const [reviews, setReviews] = useState<ReviewData[]>(fallbackReviews)
+  // Slides curated in Admin → Carousel. null until the fetch resolves, so the
+  // first paint can use the portfolio fallback without flicker.
+  const [curatedSlides, setCuratedSlides] = useState<SlideData[] | null>(null)
 
   useEffect(() => {
     publicApi
       .reviews()
       .then((r) => r.reviews.length > 0 && setReviews(r.reviews))
       .catch(() => undefined)
+    publicApi
+      .slides()
+      .then((s) => setCuratedSlides(s.slides))
+      .catch(() => setCuratedSlides([]))
   }, [])
 
-  const heroSlides = content.photos
+  const fallbackSlides = content.photos
     .filter((p) => p.src)
     .slice(0, 5)
     .map((p) => ({ image_url: p.src, alt: p.alt, caption: p.caption }))
+
+  // Curated slides replace the automatic "recent work" selection as soon as
+  // one exists; with none, the hero shows the latest portfolio photos.
+  const heroSlides: HeroSlide[] =
+    curatedSlides && curatedSlides.length > 0 ? curatedSlides : fallbackSlides
 
   return (
     <div>

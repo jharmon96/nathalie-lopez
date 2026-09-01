@@ -17,6 +17,14 @@ class SlideBody(BaseModel):
     sort_order: int = 0
 
 
+class SlideUpdate(BaseModel):
+    """PATCH body: every field optional, only provided fields are applied."""
+
+    image_url: str | None = None
+    alt: str | None = None
+    caption: str | None = None
+
+
 @router.get("/public/slides")
 async def public_slides(db: AsyncSession = Depends(get_db)) -> dict:
     rows = (await db.execute(select(CarouselSlide).order_by(CarouselSlide.sort_order))).scalars().all()
@@ -46,15 +54,18 @@ async def create_slide(
 
 @router.patch("/admin/slides/{slide_id}")
 async def update_slide(
-    slide_id: int, body: SlideBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)
+    slide_id: int, body: SlideUpdate, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)
 ) -> dict:
     s = await db.get(CarouselSlide, slide_id)
     if s is None:
         raise HTTPException(status_code=404, detail="Slide not found")
-    for key, value in body.model_dump().items():
+    updates = body.model_dump(exclude_unset=True)
+    if "image_url" in updates and not updates["image_url"].strip():
+        raise HTTPException(status_code=422, detail="Image URL cannot be empty")
+    for key, value in updates.items():
         setattr(s, key, value)
     await db.commit()
-    return {"id": s.id, **body.model_dump()}
+    return {"id": s.id, "image_url": s.image_url, "alt": s.alt, "caption": s.caption}
 
 
 @router.delete("/admin/slides/{slide_id}")
