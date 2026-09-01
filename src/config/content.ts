@@ -103,3 +103,36 @@ export const sessions: Session[] = [
     includes: ['Half or full day', 'Usage licencing', 'Retouching included', 'Fast turnaround'],
   },
 ]
+
+export const faqs: { question: string; answer: string }[] = [
+  {
+    question: 'How do we book you?',
+    answer: 'Start with the enquiry form. We begin with a call or a coffee, and once we agree on the plan a 25% retainer locks in the date.',
+  },
+  {
+    question: 'Do you travel?',
+    answer: 'Happily. Based in West Yorkshire, I photograph weddings and commissions across the UK and further afield — destination weddings carry simple, flat-rate travel pricing.',
+  },
+  {
+    question: 'How many photographs will we get?',
+    answer: 'A portrait sitting yields 20+ finished frames; a full wedding day, 600+. Every gallery is a tight edit — culled, printed, and proofed by hand — not everything shot.',
+  },
+  {
+    question: 'Do you shoot film?',
+    answer: 'Yes — 35mm and 120 alongside digital where it earns its place. Film scans arrive in the same gallery, labelled by stock.',
+  },
+  {
+    question: 'How long until we see the gallery?',
+    answer: 'Portrait galleries within two weeks. Weddings within eight weeks, with a handful of sneak peeks in the days after.',
+  },
+  {
+    question: 'Can we order prints and albums?',
+    answer: 'Absolutely. Archival pigment prints, silver-gelatin darkroom prints, and heirloom albums are all available through the studio.',
+  },
+]
+
+export const siteText = {
+  tagline: "Wedding & portrait photography capturing life's most unforgettable moments",
+  service_area: 'Serving the UK & Destinations Worldwide',
+}
+

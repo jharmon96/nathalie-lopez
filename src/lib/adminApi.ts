@@ -158,12 +158,6 @@ export interface InstagramPostData {
   synced: boolean
 }
 
-export const publicApi = {
-  reviews: () => request<{ reviews: ReviewData[] }>('/public/reviews', 'GET'),
-  slides: () => request<{ slides: SlideData[] }>('/public/slides', 'GET'),
-  instagram: () => request<{ posts: InstagramPostData[] }>('/public/instagram', 'GET'),
-}
-
 export interface AdminReview extends ReviewData {
   id: number
   sort_order: number
@@ -201,4 +195,89 @@ export interface ConnectionStatus {
   app_configured: boolean
   connected: boolean
   token_updated_at: string | null
+}
+
+// ---- editable site content (faqs, photos, sessions, site text) ----
+
+export interface FaqData {
+  question: string
+  answer: string
+}
+
+export interface PhotoData {
+  category: string
+  src: string
+  alt: string
+  caption: string | null
+  exif: string | null
+  aspect: string
+}
+
+export interface SessionData {
+  name: string
+  price: string
+  blurb: string | null
+  includes: string[]
+  featured: boolean
+}
+
+export interface SiteContent {
+  faqs: FaqData[]
+  photos: PhotoData[]
+  sessions: SessionData[]
+  site: Record<string, string>
+}
+
+export const publicApi = {
+  reviews: () => request<{ reviews: ReviewData[] }>('/public/reviews', 'GET'),
+  slides: () => request<{ slides: SlideData[] }>('/public/slides', 'GET'),
+  instagram: () => request<{ posts: InstagramPostData[] }>('/public/instagram', 'GET'),
+  content: () => request<SiteContent>('/public/content', 'GET'),
+}
+
+export interface AdminFaq extends FaqData {
+  id: number
+  sort_order: number
+}
+
+export const faqsApi = {
+  list: () => request<{ faqs: AdminFaq[] }>('/admin/faqs', 'GET'),
+  create: (body: Omit<AdminFaq, 'id'>) => request<AdminFaq>('/admin/faqs', 'POST', body),
+  remove: (id: number) => request<{ ok: boolean }>(`/admin/faqs/${id}`, 'DELETE'),
+}
+
+export interface AdminPhoto {
+  id: number
+  category: string
+  src: string
+  alt: string
+  caption: string | null
+  exif: string | null
+  aspect: string | null
+  sort_order: number
+}
+
+export const photosApi = {
+  list: () => request<{ photos: AdminPhoto[] }>('/admin/photos', 'GET'),
+  create: (body: { category: string; src: string; alt: string; caption?: string; exif?: string; aspect?: string }) =>
+    request<AdminPhoto>('/admin/photos', 'POST', body),
+  remove: (id: number) => request<{ ok: boolean }>(`/admin/photos/${id}`, 'DELETE'),
+}
+
+export interface AdminSession {
+  id: number
+  name: string
+  price: string
+  blurb: string | null
+  includes: string | null
+  featured: boolean
+  sort_order: number
+}
+
+export const sessionsApi = {
+  list: () => request<{ sessions: AdminSession[] }>('/admin/sessions', 'GET'),
+  update: (
+    id: number,
+    body: { name: string; price: string; blurb: string | null; includes: string | null; featured: boolean },
+  ) => request<AdminSession>(`/admin/sessions/${id}`, 'PATCH', body),
 }

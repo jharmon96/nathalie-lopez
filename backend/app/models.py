@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -118,6 +118,50 @@ class InstagramPost(Base):
     # Set when synced from the Graph API; manual entries are considered pinned
     synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class FaqEntry(Base):
+    __tablename__ = "faq_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    question: Mapped[str] = mapped_column(String)
+    answer: Mapped[str] = mapped_column(Text)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class PhotoEntry(Base):
+    __tablename__ = "photo_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    category: Mapped[str] = mapped_column(String, index=True)  # portrait | wedding | editorial
+    src: Mapped[str] = mapped_column(String)
+    alt: Mapped[str] = mapped_column(String)
+    caption: Mapped[str | None] = mapped_column(String, nullable=True)
+    exif: Mapped[str | None] = mapped_column(String, nullable=True)
+    # CSS aspect-ratio value, e.g. 4/5 or 3/2
+    aspect: Mapped[str | None] = mapped_column(String, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SessionEntry(Base):
+    __tablename__ = "session_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String)
+    price: Mapped[str] = mapped_column(String)
+    blurb: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Newline-separated list of inclusions
+    includes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    featured: Mapped[bool] = mapped_column(Boolean, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SiteText(Base):
+    __tablename__ = "site_texts"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Credential(Base):

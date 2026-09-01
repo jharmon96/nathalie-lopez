@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 
+import { useScrollReveal } from '@/hooks/useScrollReveal'
+
 import { Footer } from './Footer'
 import { Header } from './Header'
 
@@ -20,6 +22,7 @@ function useScrollToLocation() {
 
 export function Layout() {
   useScrollToLocation()
+  useScrollReveal()
   return (
     <div className="flex min-h-screen flex-col">
       <Header />

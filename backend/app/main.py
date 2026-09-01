@@ -9,6 +9,7 @@ from app.db import Base, SessionLocal, engine
 from app.models import AdminUser, Review, utcnow
 from app.routers import (
     admin_auth,
+    content,
     customers,
     galleries,
     health,
@@ -18,6 +19,7 @@ from app.routers import (
     reviews,
     slides,
 )
+from app.seed import seed_content
 from app.security import hash_password, verify_password
 
 
@@ -43,6 +45,7 @@ async def lifespan(app: FastAPI):
                 admin.password_hash = hash_password(settings.admin_password)
                 admin.updated_at = utcnow()
             await session.commit()
+
     # Seed the reference review so the home carousel has something to show
     async with SessionLocal() as session:
         if (await session.execute(select(Review))).scalar_one_or_none() is None:
@@ -58,6 +61,11 @@ async def lifespan(app: FastAPI):
                 )
             )
             await session.commit()
+
+    # Editable site content: fill empty tables with the studio defaults
+    async with SessionLocal() as session:
+        await seed_content(session)
+
     yield
     await engine.dispose()
 
@@ -81,6 +89,7 @@ def create_app() -> FastAPI:
     for router in (
         health,
         admin_auth,
+        content,
         customers,
         invoices,
         galleries,

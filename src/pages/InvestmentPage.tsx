@@ -1,5 +1,5 @@
-import { sessions } from '@/config/content'
 import { site } from '@/config/site'
+import { useSiteContent } from '@/hooks/useSiteContent'
 
 import { Button } from '@/components/Button'
 import { SectionHeading } from '@/components/SectionHeading'
@@ -22,6 +22,7 @@ const notes = [
 
 export function InvestmentPage() {
   usePageMeta(`Investment | ${site.name}`, 'Portrait sittings, wedding coverage, and editorial commissions — sessions and rates.')
+  const { sessions } = useSiteContent()
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
