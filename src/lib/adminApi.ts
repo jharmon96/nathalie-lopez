@@ -163,21 +163,9 @@ export interface AdminReview extends ReviewData {
   sort_order: number
 }
 
-export const reviewsApi = {
-  list: () => request<{ reviews: AdminReview[] }>('/admin/reviews', 'GET'),
-  create: (body: Omit<AdminReview, 'id'>) => request<AdminReview>('/admin/reviews', 'POST', body),
-  remove: (id: number) => request<{ ok: boolean }>(`/admin/reviews/${id}`, 'DELETE'),
-}
-
 export interface AdminSlide extends SlideData {
   id: number
   sort_order: number
-}
-
-export const slidesApi = {
-  list: () => request<{ slides: AdminSlide[] }>('/admin/slides', 'GET'),
-  create: (body: Omit<AdminSlide, 'id'>) => request<AdminSlide>('/admin/slides', 'POST', body),
-  remove: (id: number) => request<{ ok: boolean }>(`/admin/slides/${id}`, 'DELETE'),
 }
 
 export const instagramApi = {
@@ -243,7 +231,9 @@ export interface AdminFaq extends FaqData {
 export const faqsApi = {
   list: () => request<{ faqs: AdminFaq[] }>('/admin/faqs', 'GET'),
   create: (body: Omit<AdminFaq, 'id'>) => request<AdminFaq>('/admin/faqs', 'POST', body),
+  update: (id: number, body: Omit<AdminFaq, 'id'>) => request<AdminFaq>(`/admin/faqs/${id}`, 'PATCH', body),
   remove: (id: number) => request<{ ok: boolean }>(`/admin/faqs/${id}`, 'DELETE'),
+  reorder: (ids: number[]) => request<{ ok: boolean }>('/admin/faqs/reorder', 'POST', { ids }),
 }
 
 export interface AdminPhoto {
@@ -261,7 +251,10 @@ export const photosApi = {
   list: () => request<{ photos: AdminPhoto[] }>('/admin/photos', 'GET'),
   create: (body: { category: string; src: string; alt: string; caption?: string; exif?: string; aspect?: string }) =>
     request<AdminPhoto>('/admin/photos', 'POST', body),
+  update: (id: number, body: Partial<Omit<AdminPhoto, 'id' | 'sort_order'>>) =>
+    request<AdminPhoto>(`/admin/photos/${id}`, 'PATCH', body),
   remove: (id: number) => request<{ ok: boolean }>(`/admin/photos/${id}`, 'DELETE'),
+  reorder: (ids: number[]) => request<{ ok: boolean }>('/admin/photos/reorder', 'POST', { ids }),
 }
 
 export interface AdminSession {
@@ -276,8 +269,26 @@ export interface AdminSession {
 
 export const sessionsApi = {
   list: () => request<{ sessions: AdminSession[] }>('/admin/sessions', 'GET'),
+  create: (body: { name: string; price: string; blurb: string | null; includes: string | null; featured: boolean; sort_order?: number }) =>
+    request<AdminSession>('/admin/sessions', 'POST', body),
   update: (
     id: number,
     body: { name: string; price: string; blurb: string | null; includes: string | null; featured: boolean },
   ) => request<AdminSession>(`/admin/sessions/${id}`, 'PATCH', body),
+  reorder: (ids: number[]) => request<{ ok: boolean }>('/admin/sessions/reorder', 'POST', { ids }),
+}
+
+export const reviewsApi = {
+  list: () => request<{ reviews: AdminReview[] }>('/admin/reviews', 'GET'),
+  create: (body: Omit<AdminReview, 'id'>) => request<AdminReview>('/admin/reviews', 'POST', body),
+  update: (id: number, body: Omit<AdminReview, 'id'>) => request<AdminReview>(`/admin/reviews/${id}`, 'PATCH', body),
+  remove: (id: number) => request<{ ok: boolean }>(`/admin/reviews/${id}`, 'DELETE'),
+  reorder: (ids: number[]) => request<{ ok: boolean }>('/admin/reviews/reorder', 'POST', { ids }),
+}
+
+export const slidesApi = {
+  list: () => request<{ slides: AdminSlide[] }>('/admin/slides', 'GET'),
+  create: (body: Omit<AdminSlide, 'id'>) => request<AdminSlide>('/admin/slides', 'POST', body),
+  remove: (id: number) => request<{ ok: boolean }>(`/admin/slides/${id}`, 'DELETE'),
+  reorder: (ids: number[]) => request<{ ok: boolean }>('/admin/slides/reorder', 'POST', { ids }),
 }

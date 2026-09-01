@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import FaqEntry, PhotoEntry, SessionEntry, SiteText
+from app.models import CarouselSlide, FaqEntry, PhotoEntry, Review, SessionEntry, SiteText
 from app.security import require_admin
 
 router = APIRouter()
@@ -58,6 +58,17 @@ async def create_faq(body: FaqBody, db: AsyncSession = Depends(get_db), _: None 
     return {"id": f.id, **body.model_dump()}
 
 
+@router.patch("/admin/faqs/{faq_id}")
+async def update_faq(faq_id: int, body: FaqBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    f = await db.get(FaqEntry, faq_id)
+    if f is None:
+        raise HTTPException(status_code=404, detail="FAQ not found")
+    for key, value in body.model_dump().items():
+        setattr(f, key, value)
+    await db.commit()
+    return {"id": f.id, **body.model_dump()}
+
+
 @router.delete("/admin/faqs/{faq_id}")
 async def delete_faq(faq_id: int, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
     f = await db.get(FaqEntry, faq_id)
@@ -102,6 +113,17 @@ async def create_photo(body: PhotoBody, db: AsyncSession = Depends(get_db), _: N
     return {"id": p.id, **body.model_dump()}
 
 
+@router.patch("/admin/photos/{photo_id}")
+async def update_photo(photo_id: int, body: PhotoBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    p = await db.get(PhotoEntry, photo_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    for key, value in body.model_dump().items():
+        setattr(p, key, value)
+    await db.commit()
+    return {"id": p.id, **body.model_dump()}
+
+
 @router.delete("/admin/photos/{photo_id}")
 async def delete_photo(photo_id: int, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
     p = await db.get(PhotoEntry, photo_id)
@@ -135,6 +157,14 @@ async def list_sessions(db: AsyncSession = Depends(get_db), _: None = Depends(re
     }
 
 
+@router.post("/admin/sessions")
+async def create_session(body: SessionBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    s = SessionEntry(**body.model_dump())
+    db.add(s)
+    await db.commit()
+    return {"id": s.id, **body.model_dump()}
+
+
 @router.patch("/admin/sessions/{session_id}")
 async def update_session(
     session_id: int, body: SessionBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)
@@ -153,6 +183,49 @@ async def update_session(
 
 class SiteTextBody(BaseModel):
     values: dict[str, str]
+
+
+class ReorderBody(BaseModel):
+    ids: list[int]
+
+
+async def _apply_reorder(db: AsyncSession, model, ids: list[int]) -> None:
+    for position, item_id in enumerate(ids):
+        row = await db.get(model, item_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
+        row.sort_order = position
+    await db.commit()
+
+
+@router.post("/admin/photos/reorder")
+async def reorder_photos(body: ReorderBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    await _apply_reorder(db, PhotoEntry, body.ids)
+    return {"ok": True}
+
+
+@router.post("/admin/sessions/reorder")
+async def reorder_sessions(body: ReorderBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    await _apply_reorder(db, SessionEntry, body.ids)
+    return {"ok": True}
+
+
+@router.post("/admin/faqs/reorder")
+async def reorder_faqs(body: ReorderBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    await _apply_reorder(db, FaqEntry, body.ids)
+    return {"ok": True}
+
+
+@router.post("/admin/reviews/reorder")
+async def reorder_reviews(body: ReorderBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    await _apply_reorder(db, Review, body.ids)
+    return {"ok": True}
+
+
+@router.post("/admin/slides/reorder")
+async def reorder_slides(body: ReorderBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    await _apply_reorder(db, CarouselSlide, body.ids)
+    return {"ok": True}
 
 
 @router.get("/admin/site")

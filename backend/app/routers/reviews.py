@@ -59,6 +59,17 @@ async def update_review(
     return {"id": r.id, **body.model_dump()}
 
 
+@router.patch("/admin/reviews/{review_id}")
+async def update_review(review_id: int, body: ReviewBody, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)) -> dict:
+    r = await db.get(Review, review_id)
+    if r is None:
+        raise HTTPException(status_code=404, detail="Review not found")
+    for key, value in body.model_dump().items():
+        setattr(r, key, value)
+    await db.commit()
+    return {"id": r.id, **body.model_dump()}
+
+
 @router.delete("/admin/reviews/{review_id}")
 async def delete_review(
     review_id: int, db: AsyncSession = Depends(get_db), _: None = Depends(require_admin)

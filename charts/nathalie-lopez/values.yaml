@@ -14,7 +14,7 @@ certificate:
 
 app:
   image: extendederp/nathalie-lopez
-  version: 8
+  version: 9
   replicas: 1
   service:
     port: 80
@@ -30,7 +30,7 @@ app:
 
 backend:
   image: extendederp/nathalie-lopez-backend
-  version: 10
+  version: 11
   replicas: 1
   service:
     port: 8000

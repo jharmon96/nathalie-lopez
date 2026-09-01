@@ -14,11 +14,14 @@ import { PrivacyPage } from '@/pages/PrivacyPage'
 import { AdminLayout } from '@/pages/admin/AdminLayout'
 import { AdminCarouselPage } from '@/pages/admin/AdminCarouselPage'
 import { AdminCrmPage } from '@/pages/admin/AdminCrmPage'
+import { AdminFaqPage } from '@/pages/admin/AdminFaqPage'
 import { AdminGalleriesPage } from '@/pages/admin/AdminGalleriesPage'
 import { AdminInstagramPage } from '@/pages/admin/AdminInstagramPage'
 import { AdminInvoicesPage } from '@/pages/admin/AdminInvoicesPage'
 import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
+import { AdminPhotosPage } from '@/pages/admin/AdminPhotosPage'
 import { AdminReviewsPage } from '@/pages/admin/AdminReviewsPage'
+import { AdminSessionsPage } from '@/pages/admin/AdminSessionsPage'
 
 const router = createBrowserRouter([
   {
@@ -46,6 +49,9 @@ const router = createBrowserRouter([
       { path: 'reviews', element: <AdminReviewsPage /> },
       { path: 'carousel', element: <AdminCarouselPage /> },
       { path: 'instagram', element: <AdminInstagramPage /> },
+      { path: 'faq', element: <AdminFaqPage /> },
+      { path: 'photos', element: <AdminPhotosPage /> },
+      { path: 'sessions', element: <AdminSessionsPage /> },
     ],
   },
 ])

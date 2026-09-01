@@ -12,13 +12,16 @@ os.environ.setdefault("NLP_SESSION_SECRET", "test-session-secret")
 os.environ.setdefault("NLP_DATABASE_URL", "sqlite+aiosqlite://")
 os.environ.setdefault("NLP_INSTAGRAM_APP_ID", "1234567890")
 os.environ.setdefault("NLP_INSTAGRAM_APP_SECRET", "test-app-secret")
+# Secure cookies are not sent over the test client's http connection
+os.environ.setdefault("NLP_DEBUG", "true")
+os.environ.setdefault("NLP_LOGIN_RATE_MAX", "1000")
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.crypto import hash_password
+from app.security import hash_password
 from app.main import app
 from app.models import AdminUser
 
@@ -90,4 +93,5 @@ def admin_client(client):
     """A client authenticated as the admin."""
     res = client.post("/api/v1/admin/login", json={"password": TEST_ADMIN_PASSWORD})
     assert res.status_code == 200, res.text
+    client.headers["X-NLP-Admin"] = "1"
     return client

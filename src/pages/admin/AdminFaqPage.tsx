@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FocusEvent, type FormEvent } from 'react'
 
 import { faqsApi } from '@/lib/adminApi'
 
+import { SortableList } from '@/components/admin/Sortable'
 import { EmptyNote, Field, inputClasses, Panel } from './ui'
 
 interface Faq {
@@ -38,11 +39,18 @@ export function AdminFaqPage() {
     }
   }
 
+  async function handleReorder(ids: number[]) {
+    await faqsApi.reorder(ids).catch(() => undefined)
+    await load()
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="font-display text-3xl text-ink">FAQ</h1>
-        <p className="mt-1 text-sm text-ink/60">Questions shown on the FAQ page, in order.</p>
+        <p className="mt-1 text-sm text-ink/60">
+          Drag to reorder. Edits save when you click away.
+        </p>
       </div>
 
       <Panel title="Add a question">
@@ -65,26 +73,69 @@ export function AdminFaqPage() {
         {faqs.length === 0 ? (
           <EmptyNote>No questions yet.</EmptyNote>
         ) : (
-          faqs.map((f) => (
-            <div key={f.id} className="border border-ink/12 bg-mat/40 p-5">
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="font-display text-lg text-ink">{f.question}</span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await faqsApi.remove(f.id).catch(() => undefined)
-                    await load()
-                  }}
-                  className="text-xs text-ink/45 hover:text-safelight-deep"
-                >
-                  Delete
-                </button>
-              </div>
-              <p className="mt-1 text-sm leading-relaxed text-ink/70">{f.answer}</p>
-            </div>
-          ))
+          <SortableList
+            items={faqs}
+            keyOf={(f) => f.id}
+            onReorder={handleReorder}
+            renderItem={(faq) => <FaqEditor faq={faq} onDeleted={load} />}
+          />
         )}
       </section>
+    </div>
+  )
+}
+
+function FaqEditor({ faq, onDeleted }: { faq: Faq; onDeleted: () => Promise<void> }) {
+  const [draft, setDraft] = useState({ question: faq.question, answer: faq.answer ?? '' })
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+
+  async function save() {
+    if (draft.question === faq.question && draft.answer === (faq.answer ?? '')) return
+    setStatus('saving')
+    await faqsApi.update(faq.id, { ...draft, sort_order: faq.sort_order }).catch(() => undefined)
+    setStatus('saved')
+    setTimeout(() => setStatus('idle'), 2000)
+  }
+
+  function onBlur(e: FocusEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) save()
+  }
+
+  return (
+    <div
+      className="border border-ink/12 bg-mat/40 p-5"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) save()
+      }}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <input
+          value={draft.question}
+          onChange={(e) => setDraft((d) => ({ ...d, question: e.target.value }))}
+          onBlur={onBlur}
+          className="w-full bg-transparent font-display text-lg text-ink outline-none"
+          aria-label="Question"
+        />
+        {status !== 'idle' && <span className="exif text-safelight-deep">{status}</span>}
+        <button
+          type="button"
+          onClick={async () => {
+            await faqsApi.remove(faq.id).catch(() => undefined)
+            onDeleted()
+          }}
+          className="text-xs text-ink/45 hover:text-safelight-deep"
+        >
+          Delete
+        </button>
+      </div>
+      <textarea
+        value={draft.answer}
+        onChange={(e) => setDraft((d) => ({ ...d, answer: e.target.value }))}
+        onBlur={onBlur}
+        rows={2}
+        className="mt-2 w-full bg-transparent text-sm leading-relaxed text-ink/70 outline-none"
+        aria-label="Answer"
+      />
     </div>
   )
 }

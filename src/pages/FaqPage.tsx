@@ -4,8 +4,8 @@ import { SectionHeading } from '@/components/SectionHeading'
 import { faqs as fallbackFaqs } from '@/config/content'
 import { site } from '@/config/site'
 import { type FaqData } from '@/lib/adminApi'
-import { usePageMeta } from '@/lib/usePageMeta'
 import { useSiteContent } from '@/hooks/useSiteContent'
+import { usePageMeta } from '@/lib/usePageMeta'
 
 export function FaqPage() {
   usePageMeta(`FAQ | ${site.name}`, 'Frequently asked questions about booking Nathalie Lopez Photography.')

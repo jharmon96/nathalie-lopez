@@ -5,14 +5,52 @@ import { adminApi, ApiError } from '@/lib/adminApi'
 
 import { ApertureMark } from '@/components/ApertureMark'
 
-const tabs = [
-  { to: '/admin', label: 'CRM', end: true },
-  { to: '/admin/invoices', label: 'Invoices', end: false },
-  { to: '/admin/galleries', label: 'Galleries', end: false },
-  { to: '/admin/reviews', label: 'Reviews', end: false },
-  { to: '/admin/carousel', label: 'Carousel', end: false },
-  { to: '/admin/instagram', label: 'Instagram', end: false },
+const groups = [
+  {
+    label: 'Bookings',
+    items: [
+      { to: '/admin', label: 'CRM', end: true },
+      { to: '/admin/invoices', label: 'Invoices', end: false },
+      { to: '/admin/galleries', label: 'Galleries', end: false },
+    ],
+  },
+  {
+    label: 'Website',
+    items: [
+      { to: '/admin/photos', label: 'Photos', end: false },
+      { to: '/admin/carousel', label: 'Carousel', end: false },
+      { to: '/admin/faq', label: 'FAQ', end: false },
+      { to: '/admin/reviews', label: 'Reviews', end: false },
+      { to: '/admin/instagram', label: 'Instagram', end: false },
+    ],
+  },
 ]
+
+function GroupedNav() {
+  return (
+    <nav aria-label="Admin" className="flex flex-wrap items-end gap-x-6 gap-y-2">
+      {groups.map((group, gi) => (
+        <div key={group.label} className={`flex flex-col gap-1 ${gi > 0 ? 'sm:border-l sm:border-paper/15 sm:pl-6' : ''}`}>
+          <span className="eyebrow text-paper/40">{group.label}</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {group.items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `text-sm transition-colors hover:text-paper ${isActive ? 'text-safelight' : 'text-paper/70'}`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      ))}
+    </nav>
+  )
+}
 
 export function AdminLayout() {
   const [checked, setChecked] = useState(false)
@@ -50,30 +88,17 @@ export function AdminLayout() {
               <span className="eyebrow mt-1 text-paper/50">Nathalie Lopez</span>
             </span>
           </NavLink>
-          <nav aria-label="Admin" className="flex items-center gap-6">
-            {tabs.map((tab) => (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                end={tab.end}
-                className={({ isActive }) =>
-                  `text-sm transition-colors hover:text-paper ${isActive ? 'text-safelight' : 'text-paper/70'}`
-                }
-              >
-                {tab.label}
-              </NavLink>
-            ))}
-            <button
-              type="button"
-              onClick={async () => {
-                await adminApi.logout().catch(() => undefined)
-                navigate('/admin/login', { replace: true })
-              }}
-              className="border border-paper/30 px-3 py-1 text-sm text-paper/80 transition-colors hover:border-safelight hover:text-safelight"
-            >
-              Sign out
-            </button>
-          </nav>
+          <GroupedNav />
+          <button
+            type="button"
+            onClick={async () => {
+              await adminApi.logout().catch(() => undefined)
+              navigate('/admin/login', { replace: true })
+            }}
+            className="border border-paper/30 px-3 py-1 text-sm text-paper/80 transition-colors hover:border-safelight hover:text-safelight"
+          >
+            Sign out
+          </button>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-10">
